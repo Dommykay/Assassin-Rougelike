@@ -1,8 +1,12 @@
 love = require("love")
 mathheader = require("mathheader")
+
 function ReturnGameTable()
 
     -- Initialisation, getting some of the base stats ready
+    local _,_,flags = love.window.getMode()
+
+    _G.REFRESH_RATE = flags.refreshrate
     local game = {}
     game.player = {}
     local stats = {}
@@ -18,7 +22,7 @@ function ReturnGameTable()
     -- Camera info and functions 
     game.player.camera = {}
     local camera = {}
-    camera.framelag = 30 -- Number of frames the camera will average in order to lag behind, making the movement feel more "movementy"
+    camera.framelag = math.floor(REFRESH_RATE/2) -- Number of frames the camera will average in order to lag behind, making the movement feel more "movementy"
     camera.storedpositions = {}
     camera.updatestoredpositions = function ()
         if camera.framelag > 0 then

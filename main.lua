@@ -2,8 +2,8 @@ love = require("love")
 gametable = require("game")
 
 function love.load()
-    _G.RES_X = love.graphics.getWidth()
-    _G.RES_Y = love.graphics.getHeight()
+    _G.RES_X, _G.RES_Y, _ = love.window.getMode()
+
     FONT = love.graphics.setNewFont("Assets/Font/Exo/static/Exo-Thin.ttf", 60)
     _G.GAME = ReturnGameTable()
     _G.ZOOM = 20
@@ -48,7 +48,7 @@ function love.draw()
     parallaxcircle(250,250,1.1,5)
     love.graphics.line(x_pos_player, y_pos_player, love.mouse.getX(), love.mouse.getY())
     love.graphics.setColor(1,0,0)
-    love.graphics.line(x_pos_player, y_pos_player, GAME.player.state.speed[1]+RES_X/2,GAME.player.state.speed[2]+RES_Y/2)
+    love.graphics.line(x_pos_player, y_pos_player, x_pos_player+GAME.player.state.speed[1],y_pos_player+GAME.player.state.speed[2])
     love.graphics.setColor(1,1,1)
     love.graphics.printf(position_text, 0, 0, RES_X, "left", 0, 1, 1, 0, 0, 0, 0)
 end
