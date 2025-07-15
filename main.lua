@@ -66,7 +66,6 @@ function parallaxcircle(x,y,range,density)
     local x_pos = (CAMERA_OFFSET[1]-GAME.player.state.position[1] + x) - RES_X/2
     local y_pos = (CAMERA_OFFSET[2]-GAME.player.state.position[2] + y) - RES_Y/2
     for i=1,range, (range-1)/density do
-        print(i)
         local tmp_x = (x_pos * i * ZOOM_MULT) + RES_X/2
         local tmp_y = (y_pos * i * ZOOM_MULT) + RES_Y/2
         love.graphics.setColor(1-(i-1),0,0)
@@ -79,7 +78,6 @@ function parallaxplayer(range,density)
     local x_pos = (CAMERA_OFFSET[1]-GAME.player.state.position[1]+RES_X/2-x_pos_screen+CAMERA_OFFSET[1]) - RES_X/2
     local y_pos = (CAMERA_OFFSET[2]-GAME.player.state.position[2]+RES_Y/2-y_pos_screen+CAMERA_OFFSET[2]) - RES_Y/2
     for i=1,range, (range-1)/density do
-        print(i)
         local tmp_x = (x_pos * i * ZOOM_MULT) + RES_X/2
         local tmp_y = (y_pos * i * ZOOM_MULT) + RES_Y/2
         love.graphics.setColor(0,0.75+(i-1),0)
