@@ -18,6 +18,11 @@ function love.resize(w, h)
 end
 
 function love.update(dt)
+    x_pos_screen = (CAMERA_OFFSET[1]-GAME.player.state.position[1]) -- X and Y positions of the screen according to where it is on the map
+    y_pos_screen = (CAMERA_OFFSET[2]-GAME.player.state.position[2])
+    x_pos_player = (CAMERA_OFFSET[1]*ZOOM_MULT) + RES_X/2 -- X and Y positions of the camera when compared to the position of the player AKA the camera offset
+    y_pos_player = (CAMERA_OFFSET[2]*ZOOM_MULT) + RES_Y/2
+
     if love.keyboard.isDown("down") then
         ZOOM = ZOOM - 25*dt*ZOOM_MULT
         ZOOM_MULT = ZOOM/20
@@ -29,23 +34,27 @@ function love.update(dt)
     end
     position_text = string.format("%s,%s\n%s,%s\n%s,%s", math.floor(GAME.player.state.position[1]), math.floor(GAME.player.state.position[2]), math.floor(GAME.player.state.speed[1]), math.floor(GAME.player.state.speed[2]), math.floor(CAMERA_OFFSET[1]), math.floor(CAMERA_OFFSET[2]))
 
+    if love.mouse.isDown(1) then
+        local mouse_x, mouse_y = love.mouse.getPosition()
+        mouse_x = (mouse_x - RES_X/2) + x_pos_screen + x_pos_player
+        mouse_y = (mouse_y - RES_Y/2) + y_pos_screen + y_pos_player
+        GAME.functions.fire({x_pos_player - x_pos_screen,y_pos_player - y_pos_screen},{mouse_x, mouse_y})
+    end
+
+
     GAME.progress(dt)
     CAMERA_OFFSET = GAME.player.camera.offset()
 end
 
 function love.draw()
-    x_pos_screen = (CAMERA_OFFSET[1]-GAME.player.state.position[1])
-    y_pos_screen = (CAMERA_OFFSET[2]-GAME.player.state.position[2])
-    x_pos_player = (CAMERA_OFFSET[1]*ZOOM_MULT) + RES_X/2
-    y_pos_player = (CAMERA_OFFSET[2]*ZOOM_MULT) + RES_Y/2
-    love.graphics.setColor(0,1,0)
-    love.graphics.circle("fill", x_pos_player, y_pos_player, ZOOM - fovsizecorrection())
-    parallaxplayer(1.2,3)
-    love.graphics.setColor(1,1,1)
+    GAME.functions.renderprojectiles()
     parallaxcircle(-250,-250,1.1,5)
     parallaxcircle(250,-250,1.1,5)
     parallaxcircle(-250,250,1.1,5)
     parallaxcircle(250,250,1.1,5)
+    love.graphics.setColor(0,1,0)
+    parallaxplayer(1.2,3)
+    love.graphics.setColor(1,1,1)
     love.graphics.line(x_pos_player, y_pos_player, love.mouse.getX(), love.mouse.getY())
     love.graphics.setColor(1,0,0)
     love.graphics.line(x_pos_player, y_pos_player, x_pos_player+GAME.player.state.speed[1],y_pos_player+GAME.player.state.speed[2])

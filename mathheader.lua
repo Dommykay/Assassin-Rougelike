@@ -11,3 +11,7 @@ end
 function pythagorean(num1,num2)
     return math.sqrt(num1^2+num2^2)
 end
+
+function unitvector(vector)
+    return 
+end

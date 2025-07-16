@@ -1,5 +1,6 @@
 love = require("love")
 mathheader = require("mathheader")
+projectile = require("projectile")
 
 function ReturnGameTable()
 
@@ -9,6 +10,7 @@ function ReturnGameTable()
     _G.REFRESH_RATE = flags.refreshrate
     local game = {}
     game.player = {}
+    game.projectiles = {}
     local stats = {}
     stats.acceleration = 800
     stats.maxspeed = 200
@@ -174,6 +176,35 @@ function ReturnGameTable()
         game.player.state.position = {position[1]+(speed[1]*dt), position[2]+(speed[2]*dt)}
     end
 
+    functions.fire = function (startpos,endpos,weapontype)
+        local projectile = CreateProjectile(startpos,endpos,weapontype)
+        table.insert(game.projectiles, projectile)
+    end
+
+    functions.killexpiredprojectiles = function ()
+        for pos,projectile in pairs(game.projectiles) do
+            if projectile.dead() then
+                table.remove(game.projectiles, pos)
+            end
+        end
+    end
+
+    functions.checkcollisions = function()
+        --does nothing right now!
+    end
+
+    functions.progressprojectiles = function (dt)
+        for _,projectile in pairs(game.projectiles) do
+            projectile.progress(dt)
+        end
+    end
+
+    functions.renderprojectiles = function ()
+        for _,projectile in pairs(game.projectiles) do
+            projectile.render()
+        end
+    end
+
     game.functions = functions
 
     -- Proceed to next frame
@@ -181,6 +212,7 @@ function ReturnGameTable()
     game.progress = function (dt)
         game.functions.acceleration(dt)
         game.functions.movement(dt)
+        game.functions.progressprojectiles(dt)
         camera.updatestoredpositions()
     end
 
