@@ -7,6 +7,9 @@ function ReturnGameTable()
     -- Initialisation, getting some of the base stats ready
     local _,_,flags = love.window.getMode()
 
+
+    gunequippedfilepath = "Weapons.Guns.G19"
+
     _G.REFRESH_RATE = flags.refreshrate
     local game = {}
     game.player = {}
@@ -16,21 +19,56 @@ function ReturnGameTable()
     stats.maxspeed = 200
     stats.sprintboost = 100
     stats.sprinttime = 15
+    stats.zoommult = 3
     game.player.stats = stats
     game.player.state = {}
     game.player.state.position = {0,0}
     game.player.state.speed = {0,0}
+    
 
     -- Camera info and functions 
     game.player.camera = {}
     local camera = {}
     camera.framelag = math.floor(REFRESH_RATE/2) -- Number of frames the camera will average in order to lag behind, making the movement feel more "movementy"
+
     camera.storedpositions = {}
+
+    camera.storedpositions.player = {}
+    for i=1,camera.framelag do camera.storedpositions.player[i] = game.player.state.position end
+
+    camera.storedpositions.mouse = {}
+    for i=1,camera.framelag do camera.storedpositions.mouse[i] = {0,0} end
+
+    camera.storedpositions.zoom = {}
+    for i=1,camera.framelag do camera.storedpositions.zoom[i] = ZOOM end
+    
+
     camera.updatestoredpositions = function ()
         if camera.framelag > 0 then
-            table.insert(camera.storedpositions, 1, game.player.state.position)
-            if #camera.storedpositions > camera.framelag then
-                table.remove(camera.storedpositions)
+            if love.mouse.isDown(2) then
+                local mouse_x, mouse_y = love.mouse.getPosition()
+
+                mouse_x = mouse_x - RES_X/2
+                mouse_y = mouse_y - RES_Y/2
+
+                table.insert(camera.storedpositions.mouse, 1, {(mouse_x/10)*game.player.stats.zoommult,(mouse_y/10)*game.player.stats.zoommult})
+            else
+                table.insert(camera.storedpositions.mouse, 1, {0,0})
+            end
+            
+            table.insert(camera.storedpositions.player, 1, game.player.state.position)
+            table.insert(camera.storedpositions.zoom, 1, ZOOM)
+
+            if #camera.storedpositions.player > camera.framelag then
+                table.remove(camera.storedpositions.player)
+            end
+
+            if #camera.storedpositions.mouse > camera.framelag then
+                table.remove(camera.storedpositions.mouse)
+            end
+
+            if #camera.storedpositions.zoom > camera.framelag then
+                table.remove(camera.storedpositions.zoom)
             end
         end
     end
@@ -40,13 +78,38 @@ function ReturnGameTable()
     camera.offset = function()
         if camera.framelag > 0 then
             local total = {0,0}
-            for i,coordinate in ipairs(camera.storedpositions) do
+            local zoomtotal = 0
+
+            for i,coordinate in ipairs(camera.storedpositions.player) do
                 total[1] = total[1] + coordinate[1]
                 total[2] = total[2] + coordinate[2]
             end
+
+            for i,mouseoffset in ipairs(camera.storedpositions.mouse) do
+                total[1] = total[1] + mouseoffset[1]
+                total[2] = total[2] + mouseoffset[2]
+            end
+
+            for i,zoom in ipairs(camera.storedpositions.zoom) do
+                zoomtotal = zoomtotal + zoom
+            end
+
+
             total[1] = game.player.state.position[1] - total[1]/camera.framelag
             total[2] = game.player.state.position[2] - total[2]/camera.framelag
+            ZOOM = zoomtotal/camera.framelag
+
+
             return total
+        end
+
+        if love.mouse.isDown(2) then
+            local mouse_x, mouse_y = love.mouse.getPosition()
+
+            mouse_x = mouse_x - RES_X/2
+            mouse_y = mouse_y - RES_Y/2
+
+            return {game.player.state.position[1] - mouse_x, game.player.state.position[2] - mouse_y}
         end
         return game.player.state.position
     end
@@ -170,6 +233,13 @@ function ReturnGameTable()
 
         game.player.state.speed[2] = newspeed
     end
+
+    local equips = {}
+    gunequipped = require(gunequippedfilepath)
+    equips.gun = ReturnGun()
+
+    game.player.equips = equips
+
     
     functions.movement = function (dt)
         local position, speed = game.player.state.position, game.player.state.speed
@@ -177,8 +247,13 @@ function ReturnGameTable()
     end
 
     functions.fire = function (startpos,endpos,weapontype)
-        local projectile = CreateProjectile(startpos,endpos,weapontype)
-        table.insert(game.projectiles, projectile)
+        if (love.timer.getTime() - weapontype.lastfired) > weapontype.firerate then
+            weapontype.lastfired = love.timer.getTime()
+            local projectile = CreateProjectile(startpos,endpos,weapontype)
+            if projectile ~= nil then
+                table.insert(game.projectiles, projectile)
+            end
+        end
     end
 
     functions.killexpiredprojectiles = function ()
@@ -197,6 +272,7 @@ function ReturnGameTable()
         for _,projectile in pairs(game.projectiles) do
             projectile.progress(dt)
         end
+        functions.killexpiredprojectiles()
     end
 
     functions.renderprojectiles = function ()
