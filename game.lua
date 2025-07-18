@@ -1,6 +1,8 @@
 love = require("love")
 mathheader = require("mathheader")
 projectile = require("projectile")
+enemy = require("enemy")
+vector = require("libs.vector.vector")
 
 function ReturnGameTable()
 
@@ -13,7 +15,9 @@ function ReturnGameTable()
     _G.REFRESH_RATE = flags.refreshrate
     local game = {}
     game.player = {}
+    game.player.id = 0
     game.projectiles = {}
+    game.enemies = {}
     local stats = {}
     stats.acceleration = 800
     stats.maxspeed = 200
@@ -24,6 +28,10 @@ function ReturnGameTable()
     game.player.state = {}
     game.player.state.position = {0,0}
     game.player.state.speed = {0,0}
+    game.player.state.scopedin = false
+
+    -- Some functions to do with the player to make things easier
+    game.player.state.isStill = function () return game.player.state.speed == {0,0} end --Check the player is standing still
     
 
     -- Camera info and functions 
@@ -46,12 +54,17 @@ function ReturnGameTable()
     camera.updatestoredpositions = function ()
         if camera.framelag > 0 then
             if love.mouse.isDown(2) then
-                local mouse_x, mouse_y = love.mouse.getPosition()
+                if game.player.equips and game.player.equips.gun and game.player.equips.gun ~= nil then
+                    if game.player.equips.gun.aimingvisionincrease then
+                        local mouse_x, mouse_y = love.mouse.getPosition()
 
-                mouse_x = mouse_x - RES_X/2
-                mouse_y = mouse_y - RES_Y/2
+                        mouse_x = mouse_x - RES_X/2
+                        mouse_y = mouse_y - RES_Y/2
 
-                table.insert(camera.storedpositions.mouse, 1, {(mouse_x/10)*game.player.stats.zoommult,(mouse_y/10)*game.player.stats.zoommult})
+
+                        table.insert(camera.storedpositions.mouse, 1, {(mouse_x/10)*game.player.equips.gun.aimingvisionincrease,(mouse_y/10)*game.player.equips.gun.aimingvisionincrease})
+                    end
+                end
             else
                 table.insert(camera.storedpositions.mouse, 1, {0,0})
             end
@@ -128,6 +141,20 @@ function ReturnGameTable()
     game.controls = controls
 
 
+
+
+
+    --Code for equipping items
+
+    local equips = {}
+    local gunequipped = require(gunequippedfilepath)
+    equips.gun = ReturnGun()
+
+    game.player.equips = equips
+
+
+
+
     --Where a ton of the calculations for the game will be stored, IE movement calculations and acceleration
     game.functions = {}
 
@@ -138,6 +165,11 @@ function ReturnGameTable()
         local maxspeed, acceleration, sprintboost = game.player.stats.maxspeed, game.player.stats.acceleration*dt, game.player.stats.sprintboost
         if sprint then
             maxspeed = maxspeed + sprintboost
+        end
+        if game.player.equips and game.player.equips.gun and game.player.equips.gun ~= nil then
+            if game.player.state.scopedin then
+                maxspeed = maxspeed - game.player.equips.gun.aimingwalkspeedpenalty
+            end
         end
         
         if xor(up,down) and xor(left,right) then -- if (up xor down) and (left xor right) then cap the speed at the root of the original max speed, to prevent diagonal movement being faster than movement along one of the cardinals
@@ -189,6 +221,11 @@ function ReturnGameTable()
         if sprint then
             maxspeed = maxspeed + sprintboost
         end
+        if game.player.equips and game.player.equips.gun and game.player.equips.gun ~= nil then
+            if game.player.state.scopedin then
+                maxspeed = maxspeed - game.player.equips.gun.aimingwalkspeedpenalty
+            end
+        end
 
         if xor(up,down) and xor(left,right) then -- if (up xor down) and (left xor right) then cap the speed at the root of the original max speed, to prevent diagonal movement being faster than movement along one of the cardinals
             maxspeed = maxspeed / ROOT2
@@ -234,22 +271,20 @@ function ReturnGameTable()
         game.player.state.speed[2] = newspeed
     end
 
-    local equips = {}
-    gunequipped = require(gunequippedfilepath)
-    equips.gun = ReturnGun()
-
-    game.player.equips = equips
-
-    
+    --Player movement
     functions.movement = function (dt)
         local position, speed = game.player.state.position, game.player.state.speed
         game.player.state.position = {position[1]+(speed[1]*dt), position[2]+(speed[2]*dt)}
     end
 
-    functions.fire = function (startpos,endpos,weapontype)
+
+
+
+    --Projectile based functions
+    functions.fire = function (startpos,endpos,weapontype,thing)
         if (love.timer.getTime() - weapontype.lastfired) > weapontype.firerate then
             weapontype.lastfired = love.timer.getTime()
-            local projectile = CreateProjectile(startpos,endpos,weapontype)
+            local projectile = CreateProjectile(startpos,endpos,weapontype,thing)
             if projectile ~= nil then
                 table.insert(game.projectiles, projectile)
             end
@@ -264,8 +299,14 @@ function ReturnGameTable()
         end
     end
 
-    functions.checkcollisions = function()
-        --does nothing right now!
+    functions.checkcirclecollision = function(thing, projectile)
+        local thingposition = vector.new(thing.state.position[1],thing.state.position[2])
+        local distance = thingposition:dist(projectile.position)
+
+        print(thingposition, projectile.position)
+
+        --If the distance between the two objects is less than their radii added together, they are colliding
+        return (thing.state.size + projectile.size)*20 > distance
     end
 
     functions.progressprojectiles = function (dt)
@@ -281,6 +322,49 @@ function ReturnGameTable()
         end
     end
 
+
+    functions.spawnenemy = function ()
+        local enemy = ReturnEnemy()
+        table.insert(game.enemies, enemy)
+    end
+
+    functions.progressenemies = function (dt)
+        for i,enemy in pairs(game.enemies) do
+            local position, speed = enemy.state.position, enemy.state.speed
+            enemy.state.position = {position[1]+(speed[1]*dt), position[2]+(speed[2]*dt)}
+            print(enemy.state.position[1],enemy.state.position[2])
+        end
+    end
+
+    functions.killenemies = function ()
+        for enemypos, enemy in pairs(game.enemies) do
+            for projpos, projectile in pairs(game.projectiles) do
+                if not projectile.idinhitlist(enemy.id) then
+                    if not enemy.state.dead() and not projectile.dead() and projectile.shooterid ~= enemy.id then
+                        if functions.checkcirclecollision(enemy, projectile) then
+                            print("hit")
+                            game.enemies[enemypos].state.health = enemy.state.health - game.projectiles[projpos].damage
+                            game.projectiles[projpos].pierce = game.projectiles[projpos].pierce - 1
+                            table.insert(game.projectiles[projpos].hitlist, enemy.id)
+                        end
+                    end
+                end
+            end
+        end
+        for pos, enemy in pairs(game.enemies) do
+            if enemy.state.dead() then
+                table.remove(game.enemies, pos)
+            end
+        end
+    end
+
+    functions.renderenemies= function ()
+        for i, enemy in pairs(game.enemies) do
+            enemy.render()
+        end
+    end
+
+
     game.functions = functions
 
     -- Proceed to next frame
@@ -289,6 +373,8 @@ function ReturnGameTable()
         game.functions.acceleration(dt)
         game.functions.movement(dt)
         game.functions.progressprojectiles(dt)
+        game.functions.progressenemies(dt)
+        game.functions.killenemies()
         camera.updatestoredpositions()
     end
 

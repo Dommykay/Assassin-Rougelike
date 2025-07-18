@@ -26,6 +26,10 @@ function love.update(dt)
     ZOOM = ORIGINAL_ZOOM -- I know its a bit confusing but original zoom is copied to zoom so that the original value of 20 is not lost when changing zoom
     ZOOM_MULT = ZOOM/20
 
+    while #GAME.enemies < 5 do
+        GAME.functions.spawnenemy()
+    end
+
 
 
     if love.keyboard.isDown("down") then
@@ -48,7 +52,9 @@ function love.update(dt)
 
         ZOOM_MULT = ZOOM_MULT - mouse_dist/3
         ZOOM = ORIGINAL_ZOOM * ZOOM_MULT
-
+        GAME.player.state.scopedin = true
+    else
+        GAME.player.state.scopedin = false
     end
 
 
@@ -57,7 +63,7 @@ function love.update(dt)
     mouse_y = ((mouse_y - RES_Y/2) / ZOOM_MULT - y_pos_screen + RES_Y/2)
     if love.mouse.isDown(1) then
 
-        GAME.functions.fire({GAME.player.state.position[1]+RES_X/2,GAME.player.state.position[2]+RES_Y/2},{mouse_x, mouse_y}, GAME.player.equips.gun)
+        GAME.functions.fire({GAME.player.state.position[1]+RES_X/2,GAME.player.state.position[2]+RES_Y/2},{mouse_x, mouse_y}, GAME.player.equips.gun, GAME.player)
     end
 
 
@@ -67,10 +73,7 @@ end
 
 function love.draw()
     GAME.functions.renderprojectiles()
-    parallaxcircle(-250,-250,1.05,5)
-    parallaxcircle(250,-250,1.05,5)
-    parallaxcircle(-250,250,1.05,5)
-    parallaxcircle(250,250,1.05,5)
+    GAME.functions.renderenemies()
     love.graphics.setColor(0,1,0)
     parallaxplayer(1.05,15)
     love.graphics.setColor(1,1,1)
@@ -90,14 +93,19 @@ function fovposcorrection(orgvalue, resolution)
     return ((orgvalue - resolution/2) * modifier) + resolution/2
 end
 
-function parallaxcircle(x,y,range,density)
+function parallaxcircle(x,y,range,density,size)
     local x_pos = (CAMERA_OFFSET[1]-GAME.player.state.position[1] + x) - RES_X/2
     local y_pos = (CAMERA_OFFSET[2]-GAME.player.state.position[2] + y) - RES_Y/2
     for i=1,range, (range-1)/density do
         local tmp_x = (x_pos * i * ZOOM_MULT) + RES_X/2
         local tmp_y = (y_pos * i * ZOOM_MULT) + RES_Y/2
         love.graphics.setColor(1-(i-1),0,0)
-        love.graphics.circle("fill",fovposcorrection(tmp_x, RES_X), fovposcorrection(tmp_y, RES_Y), (ZOOM - fovsizecorrection())*i)
+        if size == nil then
+            love.graphics.circle("fill",fovposcorrection(tmp_x, RES_X), fovposcorrection(tmp_y, RES_Y), (ZOOM - fovsizecorrection())*i)
+        else
+            love.graphics.circle("fill",fovposcorrection(tmp_x, RES_X), fovposcorrection(tmp_y, RES_Y), (ZOOM - fovsizecorrection())*i*size)
+        end
+        
     end
     love.graphics.setColor(1, 1, 1)
 end
