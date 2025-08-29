@@ -14,24 +14,10 @@ function ReturnGameTable()
 
     _G.REFRESH_RATE = flags.refreshrate
     local game = {}
-    game.player = {}
+    game.player = ReturnPlayer()
     game.player.id = 0
     game.projectiles = {}
     game.enemies = {}
-    local stats = {}
-    stats.acceleration = 800
-    stats.maxspeed = 200
-    stats.sprintboost = 100
-    stats.sprinttime = 15
-    stats.zoommult = 3
-    game.player.stats = stats
-    game.player.state = {}
-    game.player.state.position = {0,0}
-    game.player.state.speed = {0,0}
-    game.player.state.scopedin = false
-
-    -- Some functions to do with the player to make things easier
-    game.player.state.isStill = function () return game.player.state.speed == {0,0} end --Check the player is standing still
     
 
     -- Camera info and functions 
@@ -160,7 +146,7 @@ function ReturnGameTable()
 
     local functions = {}
 
-    functions.acceleration = function (dt)
+    functions.acceleration = function (dt, unitvector)
         local up,down,left,right,sprint = controls.movement.up(), controls.movement.down(), controls.movement.left(), controls.movement.right(), controls.movement.sprint()
         local maxspeed, acceleration, sprintboost = game.player.stats.maxspeed, game.player.stats.acceleration*dt, game.player.stats.sprintboost
         if sprint then
