@@ -11,6 +11,7 @@ function xor(num1,num2)
 end
 
 
-function pythagorean(num1,num2)
+function pythagorean(givenvector)
+    local num1,num2 = givenvector:unpack()
     return math.sqrt(num1^2+num2^2)
 end

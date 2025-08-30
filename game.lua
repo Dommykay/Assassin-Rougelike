@@ -3,6 +3,7 @@ mathheader = require("mathheader")
 projectile = require("projectile")
 enemy = require("enemy")
 vector = require("libs.vector.vector")
+player = require("player")
 
 function ReturnGameTable()
 
@@ -14,7 +15,7 @@ function ReturnGameTable()
 
     _G.REFRESH_RATE = flags.refreshrate
     local game = {}
-    game.player = ReturnPlayer()
+    game.player = ReturnPlayer(nil, vector.new(0,0))
     game.player.id = 0
     game.projectiles = {}
     game.enemies = {}
@@ -28,10 +29,11 @@ function ReturnGameTable()
     camera.storedpositions = {}
 
     camera.storedpositions.player = {}
+    print(game.player.state.position)
     for i=1,camera.framelag do camera.storedpositions.player[i] = game.player.state.position end
 
     camera.storedpositions.mouse = {}
-    for i=1,camera.framelag do camera.storedpositions.mouse[i] = {0,0} end
+    for i=1,camera.framelag do camera.storedpositions.mouse[i] = vector.new(0,0) end
 
     camera.storedpositions.zoom = {}
     for i=1,camera.framelag do camera.storedpositions.zoom[i] = ZOOM end
@@ -48,11 +50,11 @@ function ReturnGameTable()
                         mouse_y = mouse_y - RES_Y/2
 
 
-                        table.insert(camera.storedpositions.mouse, 1, {(mouse_x/10)*game.player.equips.gun.aimingvisionincrease,(mouse_y/10)*game.player.equips.gun.aimingvisionincrease})
+                        table.insert(camera.storedpositions.mouse, 1, vector.new((mouse_x/10)*game.player.equips.gun.aimingvisionincrease,(mouse_y/10)*game.player.equips.gun.aimingvisionincrease))
                     end
                 end
             else
-                table.insert(camera.storedpositions.mouse, 1, {0,0})
+                table.insert(camera.storedpositions.mouse, 1, vector.new(0,0))
             end
             
             table.insert(camera.storedpositions.player, 1, game.player.state.position)
@@ -76,17 +78,15 @@ function ReturnGameTable()
     -- Calculate the camera offset
     camera.offset = function()
         if camera.framelag > 0 then
-            local total = {0,0}
+            local total = vector.new(0,0)
             local zoomtotal = 0
 
             for i,coordinate in ipairs(camera.storedpositions.player) do
-                total[1] = total[1] + coordinate[1]
-                total[2] = total[2] + coordinate[2]
+                total = total + coordinate
             end
 
             for i,mouseoffset in ipairs(camera.storedpositions.mouse) do
-                total[1] = total[1] + mouseoffset[1]
-                total[2] = total[2] + mouseoffset[2]
+                total = total + mouseoffset
             end
 
             for i,zoom in ipairs(camera.storedpositions.zoom) do
@@ -94,8 +94,7 @@ function ReturnGameTable()
             end
 
 
-            total[1] = game.player.state.position[1] - total[1]/camera.framelag
-            total[2] = game.player.state.position[2] - total[2]/camera.framelag
+            total = game.player.state.position - total/camera.framelag
             ZOOM = zoomtotal/camera.framelag
 
 
@@ -108,7 +107,7 @@ function ReturnGameTable()
             mouse_x = mouse_x - RES_X/2
             mouse_y = mouse_y - RES_Y/2
 
-            return {game.player.state.position[1] - mouse_x, game.player.state.position[2] - mouse_y}
+            return game.player.state.position - vector.new(mouse_x,mouse_y)
         end
         return game.player.state.position
     end
@@ -146,124 +145,26 @@ function ReturnGameTable()
 
     local functions = {}
 
-    functions.acceleration = function (dt, unitvector)
-        local up,down,left,right,sprint = controls.movement.up(), controls.movement.down(), controls.movement.left(), controls.movement.right(), controls.movement.sprint()
-        local maxspeed, acceleration, sprintboost = game.player.stats.maxspeed, game.player.stats.acceleration*dt, game.player.stats.sprintboost
-        if sprint then
-            maxspeed = maxspeed + sprintboost
-        end
-        if game.player.equips and game.player.equips.gun and game.player.equips.gun ~= nil then
-            if game.player.state.scopedin then
-                maxspeed = maxspeed - game.player.equips.gun.aimingwalkspeedpenalty
-            end
-        end
-        
-        if xor(up,down) and xor(left,right) then -- if (up xor down) and (left xor right) then cap the speed at the root of the original max speed, to prevent diagonal movement being faster than movement along one of the cardinals
-            maxspeed = maxspeed / ROOT2
-        elseif not xor(left,right) then
-            maxspeed = 0
-        end
-
-
-        local newspeed = game.player.state.speed[1]
-
-        -- Determine movement direction
-        if left and not right then
-            if newspeed > -maxspeed then
-                newspeed = newspeed - acceleration
-                if newspeed < -maxspeed then
-                    newspeed = -maxspeed
-                end
-            end
-        end
-        if right and not left then
-            if newspeed < maxspeed then
-                newspeed = newspeed + acceleration
-                if newspeed > maxspeed then
-                    newspeed = maxspeed
-                end
-            end
-        end
-
-        -- Limit left speed
-        if newspeed < -maxspeed then
-            newspeed = newspeed + acceleration
-            if newspeed > -maxspeed then -- ease the speed to the intended range if not in the intended range
-                newspeed = -maxspeed
-            end
-        end
-
-        -- Limit right speed
-        if newspeed > maxspeed then
-            newspeed = newspeed - acceleration
-            if newspeed < maxspeed then -- ease the speed to the intended range if not in the intended range
-                newspeed = maxspeed
-            end
-        end
-
-        game.player.state.speed[1] = newspeed
-        
-        maxspeed, acceleration, sprintboost = game.player.stats.maxspeed, game.player.stats.acceleration*dt, game.player.stats.sprintboost
-        if sprint then
-            maxspeed = maxspeed + sprintboost
-        end
-        if game.player.equips and game.player.equips.gun and game.player.equips.gun ~= nil then
-            if game.player.state.scopedin then
-                maxspeed = maxspeed - game.player.equips.gun.aimingwalkspeedpenalty
-            end
-        end
-
-        if xor(up,down) and xor(left,right) then -- if (up xor down) and (left xor right) then cap the speed at the root of the original max speed, to prevent diagonal movement being faster than movement along one of the cardinals
-            maxspeed = maxspeed / ROOT2
-        elseif not xor(up,down) then
-            maxspeed = 0
-        end
-
-        local newspeed = game.player.state.speed[2]
-        -- Determine movement direction
-        if up and not down then
-            if newspeed > -maxspeed then
-                newspeed = newspeed - acceleration
-                if newspeed < -maxspeed then
-                    newspeed = -maxspeed
-                end
-            end
-        end
-        if down and not up then
-            if newspeed < maxspeed then
-                newspeed = newspeed + acceleration
-                if newspeed > maxspeed then
-                    newspeed = maxspeed
-                end
-            end
-        end
-
-        -- Limit up speed
-        if newspeed < -maxspeed then
-            newspeed = newspeed + acceleration
-            if newspeed > -maxspeed then -- ease the speed to the intended range if not in the intended range
-                newspeed = -maxspeed
-            end
-        end
-
-        -- Limit down speed
-        if newspeed > maxspeed then
-            newspeed = newspeed - acceleration
-            if newspeed < maxspeed then -- ease the speed to the intended range if not in the intended range
-                newspeed = maxspeed
-            end
-        end
-
-        game.player.state.speed[2] = newspeed
+    functions.acceleration = function (dt)
+        game.player.acceleration(dt)
+        for i,enemy in ipairs(game.enemies) do
+            game.enemies[i].acceleration(dt, enemy.desiredmovementvector(game.player.state.position + vector.new(x_pos_screen,y_pos_screen)))
+            print("enemy speed:", game.enemies[i].state.speed)
+        end 
     end
 
-    --Player movement
+    --Movement
     functions.movement = function (dt)
-        local position, speed = game.player.state.position, game.player.state.speed
-        game.player.state.position = {position[1]+(speed[1]*dt), position[2]+(speed[2]*dt)}
+        -- player movement
+        game.player.state.position = game.player.state.position + (game.player.state.speed * dt)
+        print("player pos:", game.player.state.position)
+
+        -- enemy movement
+        for i,enemy in ipairs(game.enemies) do
+            game.enemies[i].movement(dt)
+            print("enemy position:", enemy.state.position)
+        end
     end
-
-
 
 
     --Projectile based functions
@@ -286,10 +187,8 @@ function ReturnGameTable()
     end
 
     functions.checkcirclecollision = function(thing, projectile)
-        local thingposition = vector.new(thing.state.position[1],thing.state.position[2])
+        local thingposition = thing.state.position
         local distance = thingposition:dist(projectile.position)
-
-        print(thingposition, projectile.position)
 
         --If the distance between the two objects is less than their radii added together, they are colliding
         return (thing.state.size + projectile.size)*20 > distance
@@ -314,13 +213,7 @@ function ReturnGameTable()
         table.insert(game.enemies, enemy)
     end
 
-    functions.progressenemies = function (dt)
-        for i,enemy in pairs(game.enemies) do
-            local position, speed = enemy.state.position, enemy.state.speed
-            enemy.state.position = {position[1]+(speed[1]*dt), position[2]+(speed[2]*dt)}
-            print(enemy.state.position[1],enemy.state.position[2])
-        end
-    end
+    
 
     functions.killenemies = function ()
         for enemypos, enemy in pairs(game.enemies) do
@@ -359,7 +252,6 @@ function ReturnGameTable()
         game.functions.acceleration(dt)
         game.functions.movement(dt)
         game.functions.progressprojectiles(dt)
-        game.functions.progressenemies(dt)
         game.functions.killenemies()
         camera.updatestoredpositions()
     end

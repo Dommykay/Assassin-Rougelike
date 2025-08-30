@@ -15,26 +15,24 @@ function ReturnEnemy(type, position)
         state.size = 1
         state.speed = vector.new(0,0)
         state.dead = function () return enemy.state.health <= 0 end
+        state.scopedin = false
         enemy.equips = {}
         local gunfile = require("Weapons.Guns.G19")
         enemy.equips.gun = ReturnGun()
 
-        state.isStill = function () return (enemy.state.speed == {0,0}) end
+        state.isStill = function () return (enemy.state.speed == vector.new(0,0)) end
 
         enemy.stats = stats
         enemy.state = state
 
         enemy.render = function ()
-            parallaxcircle(enemy.state.position[1],enemy.state.position[2],1.1,5,enemy.state.size)
+            parallaxcircle(enemy.state.position,1.1,5,enemy.state.size)
         end
 
         enemy.desiredmovementvector = function (movetopoint)
             local desiredmovement = movetopoint - enemy.state.position
-            if desiredmovement == vector.new(0,0) then
-                return vector.new(0,0)
-            end
-            desiredmovement = desiredmovement:norm()
-            return desiredmovement
+            print("movetopoint: ", movetopoint)
+            return desiredmovement:norm()
         end
 
 
@@ -48,84 +46,54 @@ function ReturnEnemy(type, position)
                 end
             end
             
-            local maxspeed_x = maxspeed * desiredmovement[1]
-            local maxspeed_y = maxspeed * desiredmovement[2]
+            local maxspeed_x, maxspeed_y = (desiredmovement * maxspeed):unpack()
+            local newspeed_x, newspeed_y = (enemy.state.speed + (acceleration * desiredmovement)):unpack()
 
 
-
-            local newspeed = enemy.state.speed[1]
-            newspeed = newspeed + (acceleration * desiredmovement[1])
 
             -- Limit left speed
-            if newspeed < -maxspeed_x then
-                newspeed = newspeed + acceleration
-                if newspeed > -maxspeed_x then -- ease the speed to the intended range if not in the intended range
-                    newspeed = -maxspeed_x
+            if newspeed_x < -maxspeed_x then
+                newspeed_x = newspeed_x + acceleration
+                if newspeed_x > -maxspeed_x then -- ease the speed to the intended range if not in the intended range
+                    newspeed_x = -maxspeed_x
                 end
             end
 
             -- Limit right speed
-            if newspeed > maxspeed_x then
-                newspeed = newspeed - acceleration
-                if newspeed < maxspeed_x then -- ease the speed to the intended range if not in the intended range
-                    newspeed = maxspeed_x
+            if newspeed_x > maxspeed_x then
+                newspeed_x = newspeed_x - acceleration
+                if newspeed_x < maxspeed_x then -- ease the speed to the intended range if not in the intended range
+                    newspeed_x = maxspeed_x
                 end
             end
-
-            enemy.state.speed[1] = newspeed
             
-            maxspeed, acceleration, sprintboost = enemy.stats.maxspeed, enemy.stats.acceleration*dt, enemy.stats.sprintboost
-            if sprint then
-                maxspeed = maxspeed + sprintboost
-            end
             if enemy.equips and enemy.equips.gun and enemy.equips.gun ~= nil then
                 if enemy.state.scopedin then
-                    maxspeed = maxspeed - enemy.equips.gun.aimingwalkspeedpenalty
-                end
-            end
-
-            if xor(up,down) and xor(left,right) then -- if (up xor down) and (left xor right) then cap the speed at the root of the original max speed, to prevent diagonal movement being faster than movement along one of the cardinals
-                maxspeed = maxspeed / ROOT2
-            elseif not xor(up,down) then
-                maxspeed = 0
-            end
-
-            local newspeed = enemy.state.speed[2]
-            -- Determine movement direction
-            if up and not down then
-                if newspeed > -maxspeed then
-                    newspeed = newspeed - acceleration
-                    if newspeed < -maxspeed then
-                        newspeed = -maxspeed
-                    end
-                end
-            end
-            if down and not up then
-                if newspeed < maxspeed then
-                    newspeed = newspeed + acceleration
-                    if newspeed > maxspeed then
-                        newspeed = maxspeed
-                    end
+                    maxspeed_y = maxspeed_y - enemy.equips.gun.aimingwalkspeedpenalty
                 end
             end
 
             -- Limit up speed
-            if newspeed < -maxspeed then
-                newspeed = newspeed + acceleration
-                if newspeed > -maxspeed then -- ease the speed to the intended range if not in the intended range
-                    newspeed = -maxspeed
+            if newspeed_y < -maxspeed_y then
+                newspeed_y = newspeed_y + acceleration
+                if newspeed_y > -maxspeed_y then -- ease the speed to the intended range if not in the intended range
+                    newspeed_y = -maxspeed_y
                 end
             end
 
             -- Limit down speed
-            if newspeed > maxspeed then
-                newspeed = newspeed - acceleration
-                if newspeed < maxspeed then -- ease the speed to the intended range if not in the intended range
-                    newspeed = maxspeed
+            if newspeed_y > maxspeed_y then
+                newspeed_y = newspeed_y - acceleration
+                if newspeed_y < maxspeed_y then -- ease the speed to the intended range if not in the intended range
+                    newspeed_y = maxspeed_y
                 end
             end
 
-            enemy.state.speed[2] = newspeed
+            enemy.state.speed = vector.new(newspeed_x, newspeed_y)
+        end
+
+        enemy.movement = function (dt)
+            enemy.state.position = enemy.state.position+(enemy.state.speed*dt)
         end
 
 

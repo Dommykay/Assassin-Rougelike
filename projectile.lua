@@ -3,9 +3,7 @@ vector = require("libs.vector.vector")
 
 
 function CreateProjectile(startpos, endpos, weapontype, shooter)
-    
-    startpos = vector.new(startpos[1], startpos[2])
-    endpos = vector.new(endpos[1], endpos[2])
+
     local startendvector = endpos - startpos
     startendvector:norm()
     local projectile = {}
@@ -14,7 +12,7 @@ function CreateProjectile(startpos, endpos, weapontype, shooter)
     projectile.unitvec = startendvector
     projectile.hitlist = {} --List of things already hit, to prevent something being hit every frame
     projectile.shooterid = shooter.id
-    local currentspeedvector = vector.new(shooter.state.speed[1],shooter.state.speed[2])
+    local currentspeedvector = shooter.state.speed
     local currentspeed = currentspeedvector:getmag()
 
     if weapontype == nil then
@@ -49,6 +47,7 @@ function CreateProjectile(startpos, endpos, weapontype, shooter)
         projectile.speedpenalty = weapontype.bulletspeedpenalty
         local stability = math.min(currentspeed/weapontype.stability,1)
         projectile.spread = (math.random()-0.5) * weapontype.spread * stability
+        print(projectile.spread)
 
         if projectile.spread ~= 0 then
             local heading = projectile.unitvec:heading()
@@ -71,8 +70,9 @@ function CreateProjectile(startpos, endpos, weapontype, shooter)
 
     projectile.render = function ()
         local x,y = projectile.position:unpack()
-        local x_pos = ((CAMERA_OFFSET[1]-GAME.player.state.position[1] + x) - RES_X/2)* ZOOM_MULT + RES_X/2
-        local y_pos = ((CAMERA_OFFSET[2]-GAME.player.state.position[2] + y) - RES_Y/2)* ZOOM_MULT + RES_Y/2
+        local tmp = CAMERA_OFFSET-GAME.player.state.position
+        local x_pos, y_pos = ((tmp + vector.new(x,y) - vector.new(RES_X/2,RES_Y/2))*ZOOM_MULT + vector.new(RES_X/2,RES_Y/2)):unpack()
+
         love.graphics.circle("fill",x_pos,y_pos, (ZOOM - fovsizecorrection())*projectile.size)
     end
 

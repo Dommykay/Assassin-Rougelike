@@ -8,7 +8,7 @@ function love.load()
     _G.ORIGINAL_ZOOM = 20
     _G.ZOOM = 20
     _G.ZOOM_MULT = ZOOM/20
-    _G.CAMERA_OFFSET = {0,0}
+    _G.CAMERA_OFFSET = vector.new(0,0)
     _G.GAME = ReturnGameTable()
     love.graphics.setBackgroundColor(0.5, 0.5, 0.5)
 end
@@ -19,14 +19,15 @@ function love.resize(w, h)
 end
 
 function love.update(dt)
-    x_pos_screen = (CAMERA_OFFSET[1]-GAME.player.state.position[1]) -- X and Y positions of the screen according to where it is on the map
-    y_pos_screen = (CAMERA_OFFSET[2]-GAME.player.state.position[2])
-    x_pos_player = (CAMERA_OFFSET[1]*ZOOM_MULT) + RES_X/2 -- X and Y positions of the camera when compared to the position of the player AKA the camera offset
-    y_pos_player = (CAMERA_OFFSET[2]*ZOOM_MULT) + RES_Y/2
-    ZOOM = ORIGINAL_ZOOM -- I know its a bit confusing but original zoom is copied to zoom so that the original value of 20 is not lost when changing zoom
+    x_pos_screen, y_pos_screen= (CAMERA_OFFSET-GAME.player.state.position):unpack() -- X and Y positions of the screen according to where it is on the map
+    
+    local tmp_pos_player = (CAMERA_OFFSET*ZOOM_MULT) + vector.new(RES_X/2, RES_Y/2)
+    x_pos_player, y_pos_player = tmp_pos_player:unpack() -- X and Y positions of the camera when compared to the position of the player AKA the camera offset
+
+    ZOOM = ORIGINAL_ZOOM -- I know its a bit confusing but original zoom is copied to zoom so that the original value of 20 is not lost when changing zoom - i programmed it as i went along, okay?
     ZOOM_MULT = ZOOM/20
 
-    while #GAME.enemies < 5 do
+    while #GAME.enemies < 1 do
         GAME.functions.spawnenemy()
     end
 
@@ -63,12 +64,12 @@ function love.update(dt)
     mouse_y = ((mouse_y - RES_Y/2) / ZOOM_MULT - y_pos_screen + RES_Y/2)
     if love.mouse.isDown(1) then
 
-        GAME.functions.fire({GAME.player.state.position[1]+RES_X/2,GAME.player.state.position[2]+RES_Y/2},{mouse_x, mouse_y}, GAME.player.equips.gun, GAME.player)
+        GAME.functions.fire(GAME.player.state.position+vector.new(RES_X/2,RES_Y/2),vector.new(mouse_x, mouse_y), GAME.player.equips.gun, GAME.player)
     end
 
 
 
-    position_text = string.format("%s,%s\n%s,%s\n%s,%s\n%s\n%s", math.floor(GAME.player.state.position[1]), math.floor(GAME.player.state.position[2]), math.floor(GAME.player.state.speed[1]), math.floor(GAME.player.state.speed[2]), math.floor(CAMERA_OFFSET[1]), math.floor(CAMERA_OFFSET[2]), ZOOM_MULT, ZOOM)
+    --position_text = string.format("%s\n%s\n%s\n%s\n%s", GAME.player.state.position:floor(), GAME.player.state.speed:floor(), CAMERA_OFFSET:floor(), ZOOM_MULT, ZOOM)
 end
 
 function love.draw()
@@ -79,23 +80,28 @@ function love.draw()
     love.graphics.setColor(1,1,1)
     love.graphics.line(x_pos_player, y_pos_player, love.mouse.getX(), love.mouse.getY())
     love.graphics.setColor(1,0,0)
-    love.graphics.line(x_pos_player, y_pos_player, x_pos_player+GAME.player.state.speed[1],y_pos_player+GAME.player.state.speed[2])
+    love.graphics.line(x_pos_player, y_pos_player,(GAME.player.state.speed + vector.new(x_pos_player,y_pos_player)):unpack())
     love.graphics.setColor(1,1,1)
-    love.graphics.printf(position_text, 0, 0, RES_X, "left", 0, 1, 1, 0, 0, 0, 0)
+    parallaxcircle(vector.new(0,0),1.1,5,0.5)
+    --love.graphics.printf(position_text, 0, 0, RES_X, "left", 0, 1, 1, 0, 0, 0, 0)
 end
 
 function fovsizecorrection()
-    return (pythagorean(GAME.player.state.speed[1],GAME.player.state.speed[2]) / (100/ZOOM_MULT))
+    return (pythagorean(GAME.player.state.speed) / (100/ZOOM_MULT))
 end
 
 function fovposcorrection(orgvalue, resolution)
-    local modifier = ( ZOOM - (pythagorean(GAME.player.state.speed[1],GAME.player.state.speed[2])) / (100/ZOOM_MULT))/ ZOOM
+    local modifier = ( ZOOM - (pythagorean(GAME.player.state.speed)) / (100/ZOOM_MULT))/ ZOOM
     return ((orgvalue - resolution/2) * modifier) + resolution/2
 end
 
-function parallaxcircle(x,y,range,density,size)
-    local x_pos = (CAMERA_OFFSET[1]-GAME.player.state.position[1] + x) - RES_X/2
-    local y_pos = (CAMERA_OFFSET[2]-GAME.player.state.position[2] + y) - RES_Y/2
+function parallaxcircle(pos,range,density,size)
+    local x_pos, y_pos = (CAMERA_OFFSET-GAME.player.state.position):unpack()
+    local x, y = pos:unpack()
+    x_pos = x_pos + x - RES_X/2
+    y_pos = y_pos + y - RES_Y/2
+
+    
     for i=1,range, (range-1)/density do
         local tmp_x = (x_pos * i * ZOOM_MULT) + RES_X/2
         local tmp_y = (y_pos * i * ZOOM_MULT) + RES_Y/2
@@ -111,8 +117,9 @@ function parallaxcircle(x,y,range,density,size)
 end
 
 function parallaxplayer(range,density)
-    local x_pos = (CAMERA_OFFSET[1]-GAME.player.state.position[1]+RES_X/2-x_pos_screen+CAMERA_OFFSET[1]) - RES_X/2
-    local y_pos = (CAMERA_OFFSET[2]-GAME.player.state.position[2]+RES_Y/2-y_pos_screen+CAMERA_OFFSET[2]) - RES_Y/2
+    local x_pos, y_pos = (CAMERA_OFFSET-GAME.player.state.position+CAMERA_OFFSET):unpack()
+    local x_pos = x_pos - x_pos_screen
+    local y_pos = y_pos - y_pos_screen
     for i=1,range, (range-1)/density do
         local tmp_x = (x_pos * i * ZOOM_MULT) + RES_X/2
         local tmp_y = (y_pos * i * ZOOM_MULT) + RES_Y/2

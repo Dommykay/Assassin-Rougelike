@@ -256,6 +256,15 @@ function vector:rotate(theta)
   return self
 end
 
+--- CUSTOM FUNCTION ADDED BY Dommykay, Floors both numbers in the vector
+---@return Vector.lua
+function vector:floor()
+  local a, b = self:unpack()
+  a, b = math.floor(a), math.floor(b)
+  self:set(a,b)
+  return self
+end
+
 --- return x and y of vector as a regular array
 ---@return { [1]: number, [2]: number }
 function vector:array()
