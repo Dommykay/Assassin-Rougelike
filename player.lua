@@ -3,9 +3,11 @@ function ReturnPlayer(items, position)
     local player = {}
     player.id = playerID
     playerID = playerID + 1
+
     local state = {}
     local stats = {}
     local controls = {}
+    local textures = {}
 
     controls.movement = {}
 
@@ -15,7 +17,11 @@ function ReturnPlayer(items, position)
     controls.movement.right = function () return love.keyboard.isDown("d") end
     controls.movement.sprint = function () return love.keyboard.isDown("lshift") end
 
-    player.controls = controls
+    textures.body = love.graphics.newImage("Assets/Sprites/Player/Player.png")
+
+
+
+
 
     stats.acceleration = 800
     stats.maxspeed = 200
@@ -29,14 +35,15 @@ function ReturnPlayer(items, position)
     state.health = 1
     state.size = 1
     state.dead = function () return player.state.health <= 0 end
-
-
+    state.isStill = function () return (player.state.speed == {0,0}) end
+    state.fireconditionsmet = function () return love.mouse.isDown(1) end
+    
     player.equips = {}
     local gunfile = require("Weapons.Guns.G19")
     player.equips.gun = ReturnGun()
 
-    state.isStill = function () return (player.state.speed == {0,0}) end
-
+    player.textures = textures
+    player.controls = controls
     player.stats = stats
     player.state = state
 

@@ -148,7 +148,7 @@ function ReturnGameTable()
     functions.acceleration = function (dt)
         game.player.acceleration(dt)
         for i,enemy in ipairs(game.enemies) do
-            game.enemies[i].acceleration(dt, enemy.desiredmovementvector(game.player.state.position + vector.new(x_pos_screen,y_pos_screen)))
+            game.enemies[i].acceleration(dt, enemy.desiredmovementvector(game.player.state.position))
             print("enemy speed:", game.enemies[i].state.speed)
         end 
     end
@@ -192,6 +192,21 @@ function ReturnGameTable()
 
         --If the distance between the two objects is less than their radii added together, they are colliding
         return (thing.state.size + projectile.size)*20 > distance
+    end
+
+    functions.spawnrequestedprojectiles = function ()
+        if game.player.state.fireconditionsmet() then
+            local mouse_x, mouse_y = love.mouse.getPosition()
+            mouse_x = ((mouse_x - RES_X/2) / ZOOM_MULT - x_pos_screen + RES_X/2)
+            mouse_y = ((mouse_y - RES_Y/2) / ZOOM_MULT - y_pos_screen + RES_Y/2)
+            game.functions.fire(game.player.state.position+vector.new(RES_X/2,RES_Y/2),vector.new(mouse_x, mouse_y), game.player.equips.gun, game.player)
+        end
+
+        for i, enemy in pairs(game.enemies) do
+            if enemy.state.fireconditionsmet() then
+                game.functions.fire(enemy.state.position,game.player.state.position+vector.new(RES_X/2,RES_Y/2), enemy.equips.gun, enemy)
+            end
+        end 
     end
 
     functions.progressprojectiles = function (dt)
@@ -252,6 +267,7 @@ function ReturnGameTable()
         game.functions.acceleration(dt)
         game.functions.movement(dt)
         game.functions.progressprojectiles(dt)
+        functions.spawnrequestedprojectiles()
         game.functions.killenemies()
         camera.updatestoredpositions()
     end

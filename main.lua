@@ -59,7 +59,7 @@ function love.update(dt)
     end
 
 
-    mouse_x, mouse_y = love.mouse.getPosition()
+    local mouse_x, mouse_y = love.mouse.getPosition()
     mouse_x = ((mouse_x - RES_X/2) / ZOOM_MULT - x_pos_screen + RES_X/2)
     mouse_y = ((mouse_y - RES_Y/2) / ZOOM_MULT - y_pos_screen + RES_Y/2)
     if love.mouse.isDown(1) then
@@ -82,7 +82,7 @@ function love.draw()
     love.graphics.setColor(1,0,0)
     love.graphics.line(x_pos_player, y_pos_player,(GAME.player.state.speed + vector.new(x_pos_player,y_pos_player)):unpack())
     love.graphics.setColor(1,1,1)
-    parallaxcircle(vector.new(0,0),1.1,5,0.5)
+    parallaxcircle(vector.new(x_pos_player,y_pos_player) - vector.new(x_pos_screen,y_pos_screen),1.1,5,0.5)
     --love.graphics.printf(position_text, 0, 0, RES_X, "left", 0, 1, 1, 0, 0, 0, 0)
 end
 

@@ -16,12 +16,14 @@ function ReturnEnemy(type, position)
         state.speed = vector.new(0,0)
         state.dead = function () return enemy.state.health <= 0 end
         state.scopedin = false
+        state.playerinsight = true
+        state.fireconditionsmet = function() return enemy.state.position:dist(vector.new(x_pos_player,y_pos_player) - vector.new(x_pos_screen,y_pos_screen)) < 400 end
+        state.isStill = function () return (enemy.state.speed == vector.new(0,0)) end
+        
+        
         enemy.equips = {}
         local gunfile = require("Weapons.Guns.G19")
         enemy.equips.gun = ReturnGun()
-
-        state.isStill = function () return (enemy.state.speed == vector.new(0,0)) end
-
         enemy.stats = stats
         enemy.state = state
 
@@ -30,10 +32,12 @@ function ReturnEnemy(type, position)
         end
 
         enemy.desiredmovementvector = function (movetopoint)
-            local desiredmovement = movetopoint - enemy.state.position
+            local desiredmovement = movetopoint - enemy.state.position + vector.new(x_pos_player,y_pos_player) - vector.new(x_pos_screen,y_pos_screen)
             print("movetopoint: ", movetopoint)
             return desiredmovement:norm()
         end
+
+        
 
 
         enemy.acceleration = function (dt, point)
